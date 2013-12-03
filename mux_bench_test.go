@@ -14,6 +14,10 @@ import (
 
 type RouterBuilder func(namespaces []string, resources []string) http.Handler
 
+func helloHandler(rw http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(rw, "hello")
+}
+
 //
 // Types / Methods needed by gocraft/web:
 //
@@ -65,9 +69,7 @@ func BenchmarkGocraftWebRoute3000(b *testing.B) {
 //
 func BenchmarkGorillaMuxSimple(b *testing.B) {
 	router := mux.NewRouter()
-	router.HandleFunc("/action", func(rw http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(rw, "hello")
-	}).Methods("GET")
+	router.HandleFunc("/action", helloHandler).Methods("GET")
 	
 	rw, req := testRequest("GET", "/action")
 	
@@ -77,12 +79,26 @@ func BenchmarkGorillaMuxSimple(b *testing.B) {
 	}
 }
 
-// func BenchmarkGorillaMuxRoute15(b *testing.B) {
-// 	const N = 1
-// 	namespaces, resources, requests := resourceSetup(N)
-// 	router := gorillaMuxRouterFor(namespaces, resources)
-// 	benchmarkRoutes(b, router, requests)
-// }
+func BenchmarkGorillaMuxRoute15(b *testing.B) {
+	benchmarkRoutesN(b, 1, gorillaMuxRouterFor)
+}
+
+func BenchmarkGorillaMuxRoute75(b *testing.B) {
+	benchmarkRoutesN(b, 5, gorillaMuxRouterFor)
+}
+
+func BenchmarkGorillaMuxRoute150(b *testing.B) {
+	benchmarkRoutesN(b, 10, gorillaMuxRouterFor)
+}
+
+func BenchmarkGorillaMuxRoute300(b *testing.B) {
+	benchmarkRoutesN(b, 20, gorillaMuxRouterFor)
+}
+
+func BenchmarkGorillaMuxRoute3000(b *testing.B) {
+	benchmarkRoutesN(b, 200, gorillaMuxRouterFor)
+}
+
 
 
 //
@@ -151,6 +167,25 @@ func resourceSetup(N int) (namespaces []string, resources []string, requests []*
 	return
 }
 
+func benchmarkRoutes(b *testing.B, handler http.Handler, requests []*http.Request) {
+	recorder := httptest.NewRecorder()
+	reqId := 0
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if reqId >= len(requests) {
+			reqId = 0
+		}
+		req := requests[reqId]
+		handler.ServeHTTP(recorder, req)
+
+		// if recorder.Code != 200 {
+		// 	panic("wat")
+		// }
+
+		reqId += 1
+	}
+}
+
 func gocraftWebRouterFor(namespaces []string, resources []string) http.Handler {
 	router := web.New(BenchContext{})
 	for _, ns := range namespaces {
@@ -166,22 +201,20 @@ func gocraftWebRouterFor(namespaces []string, resources []string) http.Handler {
 	return router
 }
 
-func benchmarkRoutes(b *testing.B, handler http.Handler, requests []*http.Request) {
-	recorder := httptest.NewRecorder()
-	reqId := 0
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		if reqId >= len(requests) {
-			reqId = 0
+func gorillaMuxRouterFor(namespaces []string, resources []string) http.Handler {
+	router := mux.NewRouter()
+	for _, ns := range namespaces {
+		subrouter := router.PathPrefix("/"+ns).Subrouter()
+		for _, res := range resources {
+			subrouter.HandleFunc("/"+res, helloHandler).Methods("GET")
+			subrouter.HandleFunc("/"+res, helloHandler).Methods("POST")
+			subrouter.HandleFunc("/"+res+"/:id", helloHandler).Methods("GET")
+			subrouter.HandleFunc("/"+res+"/:id", helloHandler).Methods("PUT")
+			subrouter.HandleFunc("/"+res+"/:id", helloHandler).Methods("DELETE")
 		}
-		req := requests[reqId]
-		handler.ServeHTTP(recorder, req)
-
-		// if recorder.Code != 200 {
-		// panic("wat")
-		// }
-
-		reqId += 1
 	}
+	return router
 }
+
+
 
