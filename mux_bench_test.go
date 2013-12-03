@@ -121,6 +121,26 @@ func BenchmarkCodegangstaMartiniSimple(b *testing.B) {
 	}
 }
 
+func BenchmarkCodegangstaMartiniRoute15(b *testing.B) {
+	benchmarkRoutesN(b, 1, codegangstaMartiniRouterFor)
+}
+
+func BenchmarkCodegangstaMartiniRoute75(b *testing.B) {
+	benchmarkRoutesN(b, 5, codegangstaMartiniRouterFor)
+}
+
+func BenchmarkCodegangstaMartiniRoute150(b *testing.B) {
+	benchmarkRoutesN(b, 10, codegangstaMartiniRouterFor)
+}
+
+func BenchmarkCodegangstaMartiniRoute300(b *testing.B) {
+	benchmarkRoutesN(b, 20, codegangstaMartiniRouterFor)
+}
+
+func BenchmarkCodegangstaMartiniRoute3000(b *testing.B) {
+	benchmarkRoutesN(b, 200, codegangstaMartiniRouterFor)
+}
+
 //
 // Helpers:
 //
@@ -214,6 +234,22 @@ func gorillaMuxRouterFor(namespaces []string, resources []string) http.Handler {
 		}
 	}
 	return router
+}
+
+func codegangstaMartiniRouterFor(namespaces []string, resources []string) http.Handler {
+	router := martini.NewRouter()
+	martini := martini.New()
+	martini.Action(router.Handle)
+	for _, ns := range namespaces {
+		for _, res := range resources {
+			router.Get("/"+ns+"/"+res, helloHandler)
+			router.Post("/"+ns+"/"+res, helloHandler)
+			router.Get("/"+ns+"/"+res+"/:id", helloHandler)
+			router.Put("/"+ns+"/"+res+"/:id", helloHandler)
+			router.Delete("/"+ns+"/"+res+"/:id", helloHandler)
+		}
+	}
+	return martini
 }
 
 
