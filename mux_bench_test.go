@@ -4,6 +4,7 @@ import (
 	"github.com/gocraft/web"
 	"github.com/gorilla/mux"
 	"github.com/codegangsta/martini"
+	"github.com/rcrowley/go-tigertonic"
 	"testing"
 	"fmt"
 	"net/http"
@@ -67,6 +68,21 @@ func BenchmarkCodegangstaMartiniSimple(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		m.ServeHTTP(rw, req)
+	}
+}
+
+//
+// Benchmarks for rcrowley/go-tigertonic's tigertonic.TrieServeMux:
+//
+func BenchmarkTigerTonicTrieServeMux(b *testing.B) {
+	mux := tigertonic.NewTrieServeMux()
+	mux.HandleFunc("GET", "/action", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "hello")
+	})
+	w, r := testRequest("GET", "/action")
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		mux.ServeHTTP(w, r)
 	}
 }
 
