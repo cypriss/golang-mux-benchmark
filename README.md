@@ -10,7 +10,7 @@ A collection of benchmarks for popular Go web frameworks.
 *  [TigerTonic](https://github.com/rcrowley/go-tigertonic)
 
 # Output
-On my Macbook Air (1.8ghz):
+```go test -bench=. -v``` on my Macbook Air (1.8ghz):
 
 ```
 BenchmarkGocraftWebSimple	 1000000	      2522 ns/op
