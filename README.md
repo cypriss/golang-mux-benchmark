@@ -7,6 +7,7 @@ A collection of benchmarks for popular Go web frameworks.
 *  [gocraft/web](https://github.com/gocraft/web)
 *  [gorilla/mux](https://github.com/gorilla/mux)
 *  [Martini](https://github.com/codegangsta/martini)
+*  [TigerTonic](https://github.com/rcrowley/go-tigertonic)
 
 # Output
 On my Macbook Air (1.8ghz):
@@ -32,4 +33,6 @@ BenchmarkCodegangstaMartiniRoute75	  100000	     20267 ns/op
 BenchmarkCodegangstaMartiniRoute150	  100000	     25183 ns/op
 BenchmarkCodegangstaMartiniRoute300	   50000	     34053 ns/op
 BenchmarkCodegangstaMartiniRoute3000	   10000	    208872 ns/op
+
+BenchmarkTigerTonicTrieServeMux	  5000000	       422 ns/op
 ```

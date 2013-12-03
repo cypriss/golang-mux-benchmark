@@ -4,6 +4,7 @@ import (
 	"github.com/gocraft/web"
 	"github.com/gorilla/mux"
 	"github.com/codegangsta/martini"
+	"github.com/rcrowley/go-tigertonic"
 	"testing"
 	"fmt"
 	"net/http"
@@ -142,6 +143,19 @@ func BenchmarkCodegangstaMartiniRoute3000(b *testing.B) {
 }
 
 //
+// Benchmarks for rcrowley/go-tigertonic's tigertonic.TrieServeMux:
+//
+func BenchmarkTigerTonicTrieServeMux(b *testing.B) {
+	mux := tigertonic.NewTrieServeMux()
+	mux.HandleFunc("GET", "/action", helloHandler)
+	rw, r := testRequest("GET", "/action")
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		mux.ServeHTTP(rw, r)
+	}
+}
+
+//
 // Helpers:
 //
 func testRequest(method, path string) (*httptest.ResponseRecorder, *http.Request) {
@@ -251,6 +265,4 @@ func codegangstaMartiniRouterFor(namespaces []string, resources []string) http.H
 	}
 	return martini
 }
-
-
 
