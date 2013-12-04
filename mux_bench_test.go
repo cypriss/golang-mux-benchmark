@@ -155,6 +155,26 @@ func BenchmarkTigerTonicTrieServeMux(b *testing.B) {
 	}
 }
 
+func BenchmarkTigerTonicRoute15(b *testing.B) {
+	benchmarkRoutesN(b, 1, tigertonicRouterFor)
+}
+
+func BenchmarkTigerTonicRoute75(b *testing.B) {
+	benchmarkRoutesN(b, 5, tigertonicRouterFor)
+}
+
+func BenchmarkTigerTonicRoute150(b *testing.B) {
+	benchmarkRoutesN(b, 10, tigertonicRouterFor)
+}
+
+func BenchmarkTigerTonicRoute300(b *testing.B) {
+	benchmarkRoutesN(b, 20, tigertonicRouterFor)
+}
+
+func BenchmarkTigerTonicRoute3000(b *testing.B) {
+	benchmarkRoutesN(b, 200, tigertonicRouterFor)
+}
+
 //
 // Helpers:
 //
@@ -266,3 +286,16 @@ func codegangstaMartiniRouterFor(namespaces []string, resources []string) http.H
 	return martini
 }
 
+func tigertonicRouterFor(namespaces []string, resources []string) http.Handler {
+	mux := tigertonic.NewTrieServeMux()
+	for _, ns := range namespaces {
+		for _, res := range resources {
+			mux.HandleFunc("GET", "/"+ns+"/"+res, helloHandler)
+			mux.HandleFunc("POST", "/"+ns+"/"+res, helloHandler)
+			mux.HandleFunc("GET", "/"+ns+"/"+res+"/{id}", helloHandler)
+			mux.HandleFunc("POST", "/"+ns+"/"+res+"/{id}", helloHandler)
+			mux.HandleFunc("DELETE", "/"+ns+"/"+res+"/{id}", helloHandler)
+		}
+	}
+	return mux
+}
