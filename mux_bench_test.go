@@ -5,6 +5,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/codegangsta/martini"
 	"github.com/rcrowley/go-tigertonic"
+	"github.com/pilu/traffic"
 	"testing"
 	"fmt"
 	"net/http"
@@ -12,12 +13,10 @@ import (
 	"crypto/sha1"
 	"io"
 )
-
+//
+// Types used by any/all frameworks:
+//
 type RouterBuilder func(namespaces []string, resources []string) http.Handler
-
-func helloHandler(rw http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(rw, "hello")
-}
 
 //
 // Benchmarks for gocraft/web:
@@ -41,6 +40,21 @@ func (c *BenchContextB) Action(w web.ResponseWriter, r *web.Request) {
 
 func gocraftWebHandler(rw web.ResponseWriter, r *web.Request) {
 	fmt.Fprintf(rw, "hello")
+}
+
+func gocraftWebRouterFor(namespaces []string, resources []string) http.Handler {
+	router := web.New(BenchContext{})
+	for _, ns := range namespaces {
+		subrouter := router.Subrouter(BenchContext{}, "/"+ns)
+		for _, res := range resources {
+			subrouter.Get("/"+res, (*BenchContext).Action)
+			subrouter.Post("/"+res, (*BenchContext).Action)
+			subrouter.Get("/"+res+"/:id", (*BenchContext).Action)
+			subrouter.Put("/"+res+"/:id", (*BenchContext).Action)
+			subrouter.Delete("/"+res+"/:id", (*BenchContext).Action)
+		}
+	}
+	return router
 }
 
 func BenchmarkGocraftWebSimple(b *testing.B) {
@@ -139,6 +153,21 @@ func BenchmarkGocraftWebComposite(b *testing.B) {
 //
 // Benchmarks for gorilla/mux:
 //
+func gorillaMuxRouterFor(namespaces []string, resources []string) http.Handler {
+	router := mux.NewRouter()
+	for _, ns := range namespaces {
+		subrouter := router.PathPrefix("/"+ns).Subrouter()
+		for _, res := range resources {
+			subrouter.HandleFunc("/"+res, helloHandler).Methods("GET")
+			subrouter.HandleFunc("/"+res, helloHandler).Methods("POST")
+			subrouter.HandleFunc("/"+res+"/:id", helloHandler).Methods("GET")
+			subrouter.HandleFunc("/"+res+"/:id", helloHandler).Methods("PUT")
+			subrouter.HandleFunc("/"+res+"/:id", helloHandler).Methods("DELETE")
+		}
+	}
+	return router
+}
+
 func BenchmarkGorillaMuxSimple(b *testing.B) {
 	router := mux.NewRouter()
 	router.HandleFunc("/action", helloHandler).Methods("GET")
@@ -176,6 +205,22 @@ func BenchmarkGorillaMuxRoute3000(b *testing.B) {
 //
 // Benchmarks for codegangsta/martini:
 //
+func codegangstaMartiniRouterFor(namespaces []string, resources []string) http.Handler {
+	router := martini.NewRouter()
+	martini := martini.New()
+	martini.Action(router.Handle)
+	for _, ns := range namespaces {
+		for _, res := range resources {
+			router.Get("/"+ns+"/"+res, helloHandler)
+			router.Post("/"+ns+"/"+res, helloHandler)
+			router.Get("/"+ns+"/"+res+"/:id", helloHandler)
+			router.Put("/"+ns+"/"+res+"/:id", helloHandler)
+			router.Delete("/"+ns+"/"+res+"/:id", helloHandler)
+		}
+	}
+	return martini
+}
+
 func BenchmarkCodegangstaMartiniSimple(b *testing.B) {
 	r := martini.NewRouter()
 	m := martini.New()
@@ -216,7 +261,23 @@ func BenchmarkCodegangstaMartiniRoute3000(b *testing.B) {
 //
 // Benchmarks for rcrowley/go-tigertonic's tigertonic.TrieServeMux:
 //
-func BenchmarkTigerTonicTrieServeMux(b *testing.B) {
+
+func tigertonicRouterFor(namespaces []string, resources []string) http.Handler {
+	mux := tigertonic.NewTrieServeMux()
+	for _, ns := range namespaces {
+		for _, res := range resources {
+			mux.HandleFunc("GET", "/"+ns+"/"+res, helloHandler)
+			mux.HandleFunc("POST", "/"+ns+"/"+res, helloHandler)
+			mux.HandleFunc("GET", "/"+ns+"/"+res+"/{id}", helloHandler)
+			mux.HandleFunc("POST", "/"+ns+"/"+res+"/{id}", helloHandler)
+			mux.HandleFunc("DELETE", "/"+ns+"/"+res+"/{id}", helloHandler)
+		}
+	}
+	return mux
+}
+
+
+func BenchmarkRcrowleyTigerTonicSimple(b *testing.B) {
 	mux := tigertonic.NewTrieServeMux()
 	mux.HandleFunc("GET", "/action", helloHandler)
 	rw, r := testRequest("GET", "/action")
@@ -226,29 +287,50 @@ func BenchmarkTigerTonicTrieServeMux(b *testing.B) {
 	}
 }
 
-func BenchmarkTigerTonicRoute15(b *testing.B) {
+func BenchmarkRcrowleyTigerTonicRoute15(b *testing.B) {
 	benchmarkRoutesN(b, 1, tigertonicRouterFor)
 }
 
-func BenchmarkTigerTonicRoute75(b *testing.B) {
+func BenchmarkRcrowleyTigerTonicRoute75(b *testing.B) {
 	benchmarkRoutesN(b, 5, tigertonicRouterFor)
 }
 
-func BenchmarkTigerTonicRoute150(b *testing.B) {
+func BenchmarkRcrowleyTigerTonicRoute150(b *testing.B) {
 	benchmarkRoutesN(b, 10, tigertonicRouterFor)
 }
 
-func BenchmarkTigerTonicRoute300(b *testing.B) {
+func BenchmarkRcrowleyTigerTonicRoute300(b *testing.B) {
 	benchmarkRoutesN(b, 20, tigertonicRouterFor)
 }
 
-func BenchmarkTigerTonicRoute3000(b *testing.B) {
+func BenchmarkRcrowleyTigerTonicRoute3000(b *testing.B) {
 	benchmarkRoutesN(b, 200, tigertonicRouterFor)
+}
+
+//
+// Benchmarks for pilu/traffic:
+//
+func piluTrafficHandler(rw traffic.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(rw, "hello")
+}
+func BenchmarkPiluTrafficSimple(b *testing.B) {
+	traffic.SetVar("env", "production")
+	router := traffic.New()
+	router.Get("/action", piluTrafficHandler)
+	rw, r := testRequest("GET", "/action")
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		router.ServeHTTP(rw, r)
+	}
 }
 
 //
 // Helpers:
 //
+func helloHandler(rw http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(rw, "hello")
+}
+
 func testRequest(method, path string) (*httptest.ResponseRecorder, *http.Request) {
 	request, _ := http.NewRequest(method, path, nil)
 	recorder := httptest.NewRecorder()
@@ -309,64 +391,4 @@ func benchmarkRoutes(b *testing.B, handler http.Handler, requests []*http.Reques
 
 		reqId += 1
 	}
-}
-
-func gocraftWebRouterFor(namespaces []string, resources []string) http.Handler {
-	router := web.New(BenchContext{})
-	for _, ns := range namespaces {
-		subrouter := router.Subrouter(BenchContext{}, "/"+ns)
-		for _, res := range resources {
-			subrouter.Get("/"+res, (*BenchContext).Action)
-			subrouter.Post("/"+res, (*BenchContext).Action)
-			subrouter.Get("/"+res+"/:id", (*BenchContext).Action)
-			subrouter.Put("/"+res+"/:id", (*BenchContext).Action)
-			subrouter.Delete("/"+res+"/:id", (*BenchContext).Action)
-		}
-	}
-	return router
-}
-
-func gorillaMuxRouterFor(namespaces []string, resources []string) http.Handler {
-	router := mux.NewRouter()
-	for _, ns := range namespaces {
-		subrouter := router.PathPrefix("/"+ns).Subrouter()
-		for _, res := range resources {
-			subrouter.HandleFunc("/"+res, helloHandler).Methods("GET")
-			subrouter.HandleFunc("/"+res, helloHandler).Methods("POST")
-			subrouter.HandleFunc("/"+res+"/:id", helloHandler).Methods("GET")
-			subrouter.HandleFunc("/"+res+"/:id", helloHandler).Methods("PUT")
-			subrouter.HandleFunc("/"+res+"/:id", helloHandler).Methods("DELETE")
-		}
-	}
-	return router
-}
-
-func codegangstaMartiniRouterFor(namespaces []string, resources []string) http.Handler {
-	router := martini.NewRouter()
-	martini := martini.New()
-	martini.Action(router.Handle)
-	for _, ns := range namespaces {
-		for _, res := range resources {
-			router.Get("/"+ns+"/"+res, helloHandler)
-			router.Post("/"+ns+"/"+res, helloHandler)
-			router.Get("/"+ns+"/"+res+"/:id", helloHandler)
-			router.Put("/"+ns+"/"+res+"/:id", helloHandler)
-			router.Delete("/"+ns+"/"+res+"/:id", helloHandler)
-		}
-	}
-	return martini
-}
-
-func tigertonicRouterFor(namespaces []string, resources []string) http.Handler {
-	mux := tigertonic.NewTrieServeMux()
-	for _, ns := range namespaces {
-		for _, res := range resources {
-			mux.HandleFunc("GET", "/"+ns+"/"+res, helloHandler)
-			mux.HandleFunc("POST", "/"+ns+"/"+res, helloHandler)
-			mux.HandleFunc("GET", "/"+ns+"/"+res+"/{id}", helloHandler)
-			mux.HandleFunc("POST", "/"+ns+"/"+res+"/{id}", helloHandler)
-			mux.HandleFunc("DELETE", "/"+ns+"/"+res+"/{id}", helloHandler)
-		}
-	}
-	return mux
 }
