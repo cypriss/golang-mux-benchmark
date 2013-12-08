@@ -313,6 +313,21 @@ func BenchmarkRcrowleyTigerTonicRoute3000(b *testing.B) {
 func piluTrafficHandler(rw traffic.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(rw, "hello")
 }
+func piluTrafficRouterFor(namespaces []string, resources []string) http.Handler {
+	traffic.SetVar("env", "production")
+	router := traffic.New()
+	for _, ns := range namespaces {
+		for _, res := range resources {
+			router.Get("/"+ns+"/"+res, piluTrafficHandler)
+			router.Post("/"+ns+"/"+res, piluTrafficHandler)
+			router.Get("/"+ns+"/"+res+"/:id", piluTrafficHandler)
+			router.Put("/"+ns+"/"+res+"/:id", piluTrafficHandler)
+			router.Delete("/"+ns+"/"+res+"/:id", piluTrafficHandler)
+		}
+	}
+	return router
+}
+
 func BenchmarkPiluTrafficSimple(b *testing.B) {
 	traffic.SetVar("env", "production")
 	router := traffic.New()
@@ -322,6 +337,26 @@ func BenchmarkPiluTrafficSimple(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		router.ServeHTTP(rw, r)
 	}
+}
+
+func BenchmarkPiluTrafficRoute15(b *testing.B) {
+	benchmarkRoutesN(b, 1, piluTrafficRouterFor)
+}
+
+func BenchmarkPiluTrafficRoute75(b *testing.B) {
+	benchmarkRoutesN(b, 5, piluTrafficRouterFor)
+}
+
+func BenchmarkPiluTrafficRoute150(b *testing.B) {
+	benchmarkRoutesN(b, 10, piluTrafficRouterFor)
+}
+
+func BenchmarkPiluTrafficRoute300(b *testing.B) {
+	benchmarkRoutesN(b, 20, piluTrafficRouterFor)
+}
+
+func BenchmarkPiluTrafficRoute3000(b *testing.B) {
+	benchmarkRoutesN(b, 200, piluTrafficRouterFor)
 }
 
 //
