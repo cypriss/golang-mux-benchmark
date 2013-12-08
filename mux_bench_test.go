@@ -309,9 +309,18 @@ func BenchmarkRcrowleyTigerTonicRoute3000(b *testing.B) {
 //
 // Benchmarks for pilu/traffic:
 //
-func piluTrafficHandler(rw traffic.ResponseWriter, r *http.Request) {
+func piluTrafficHandler(rw traffic.ResponseWriter, r *traffic.Request) {
 	fmt.Fprintf(rw, "hello")
 }
+
+type trafficMiddleware struct{}
+func (middleware *trafficMiddleware) ServeHTTP(w traffic.ResponseWriter, r *traffic.Request, next traffic.NextMiddlewareFunc) (traffic.ResponseWriter, *traffic.Request) {
+    if nextMiddleware := next(); nextMiddleware != nil {
+      w, r = nextMiddleware.ServeHTTP(w, r, next)
+    }
+	return w, r
+}
+	
 func piluTrafficRouterFor(namespaces []string, resources []string) http.Handler {
 	traffic.SetVar("env", "production")
 	router := traffic.New()
@@ -356,6 +365,26 @@ func BenchmarkPiluTrafficRoute300(b *testing.B) {
 
 func BenchmarkPiluTrafficRoute3000(b *testing.B) {
 	benchmarkRoutesN(b, 200, piluTrafficRouterFor)
+}
+
+func BenchmarkPiluTrafficMiddleware(b *testing.B) {
+	traffic.SetVar("env", "production")
+	router := traffic.New()
+	router.Use(&trafficMiddleware{})
+	router.Use(&trafficMiddleware{})
+	router.Use(&trafficMiddleware{})
+	router.Use(&trafficMiddleware{})
+	router.Use(&trafficMiddleware{})
+	router.Use(&trafficMiddleware{})
+	router.Get("/action", piluTrafficHandler)
+
+	rw, req := testRequest("GET", "/action")
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		router.ServeHTTP(rw, req)
+		if rw.Code != 200 { panic("no good") }
+	}
 }
 
 //
