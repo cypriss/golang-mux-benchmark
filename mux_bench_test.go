@@ -261,7 +261,6 @@ func BenchmarkCodegangstaMartiniRoute3000(b *testing.B) {
 //
 // Benchmarks for rcrowley/go-tigertonic's tigertonic.TrieServeMux:
 //
-
 func tigertonicRouterFor(namespaces []string, resources []string) http.Handler {
 	mux := tigertonic.NewTrieServeMux()
 	for _, ns := range namespaces {
