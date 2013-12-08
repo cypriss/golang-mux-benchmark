@@ -9,6 +9,24 @@ A collection of benchmarks for popular Go web frameworks.
 *  [gorilla/mux](https://github.com/gorilla/mux)
 *  [Martini](https://github.com/codegangsta/martini)
 *  [Tiger Tonic](https://github.com/rcrowley/go-tigertonic)
+*  [Traffic](https://github.com/pilu/traffic)
+
+# Benchmarks
+
+*  **Simple** - A single route, GET /action. Renders 'hello'.
+*  **RouteN** - Where N is the total number of routes that roughly approximate a REST API. The routes are as follows:
+   *  Three namespaces: /admin, /api, /site
+   *  Within each namespace, N/15 resources. Each resource is a random string. Each resource specifies 5 routes:
+      *  GET /resources
+      *  GET /resources/:id
+      *  POST /resources
+      *  PUT /resources/:id
+      *  DELETE /resources/:id
+*  **Middleware** - Run 6 middleware functions before invoking a hello handler.
+*  **Composite**
+   *  6 Middleware functions
+   *  150 Routes
+   *  The first middleware function sets a value that the handler must read and render.
 
 # Output
 
