@@ -200,6 +200,10 @@ func BenchmarkGorillaMuxRoute3000(b *testing.B) {
 //
 // Benchmarks for codegangsta/martini:
 //
+type martiniContext struct {
+	MyField string
+}
+
 func codegangstaMartiniRouterFor(namespaces []string, resources []string) http.Handler {
 	router := martini.NewRouter()
 	martini := martini.New()
@@ -221,9 +225,7 @@ func BenchmarkCodegangstaMartiniSimple(b *testing.B) {
 	m := martini.New()
 	m.Action(r.Handle)
 
-	r.Get("/action", func(rw http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(rw, "hello")
-	})
+	r.Get("/action", helloHandler)
 
 	rw, req := testRequest("GET", "/action")
 
@@ -251,6 +253,70 @@ func BenchmarkCodegangstaMartiniRoute300(b *testing.B) {
 
 func BenchmarkCodegangstaMartiniRoute3000(b *testing.B) {
 	benchmarkRoutesN(b, 200, codegangstaMartiniRouterFor)
+}
+
+func BenchmarkCodegangstaMartiniMiddleware(b *testing.B) {
+	martiniMiddleware := func(rw http.ResponseWriter, r *http.Request, c martini.Context) {
+		c.Next()
+	}
+	
+	r := martini.NewRouter()
+	m := martini.New()
+	m.Use(martiniMiddleware)
+	m.Use(martiniMiddleware)
+	m.Use(martiniMiddleware)
+	m.Use(martiniMiddleware)
+	m.Use(martiniMiddleware)
+	m.Use(martiniMiddleware)
+	m.Action(r.Handle)
+
+	r.Get("/action", helloHandler)
+
+	rw, req := testRequest("GET", "/action")
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		m.ServeHTTP(rw, req)
+		if rw.Code != 200 {
+			panic("no good")
+		}
+	}
+}
+
+func BenchmarkCodegangstaMartiniComposite(b *testing.B) {
+	namespaces, resources, requests := resourceSetup(10)
+
+	martiniMiddleware := func(rw http.ResponseWriter, r *http.Request, c martini.Context) {
+		c.Next()
+	}
+	
+	handler := func(rw http.ResponseWriter, r *http.Request, c *martiniContext) {
+		fmt.Fprintf(rw, c.MyField)
+	}
+	
+	r := martini.NewRouter()
+	m := martini.New()
+	m.Use(func(rw http.ResponseWriter, r *http.Request, c martini.Context) {
+		c.Map(&martiniContext{MyField: r.URL.Path})
+		c.Next()
+	})
+	m.Use(martiniMiddleware)
+	m.Use(martiniMiddleware)
+	m.Use(martiniMiddleware)
+	m.Use(martiniMiddleware)
+	m.Use(martiniMiddleware)
+	m.Action(r.Handle)
+
+	for _, ns := range namespaces {
+		for _, res := range resources {
+			r.Get("/"+ns+"/"+res, handler)
+			r.Post("/"+ns+"/"+res, handler)
+			r.Get("/"+ns+"/"+res+"/:id", handler)
+			r.Put("/"+ns+"/"+res+"/:id", handler)
+			r.Delete("/"+ns+"/"+res+"/:id", handler)
+		}
+	}
+	benchmarkRoutes(b, m, requests)
 }
 
 //
@@ -483,9 +549,9 @@ func benchmarkRoutes(b *testing.B, handler http.Handler, requests []*http.Reques
 		req := requests[reqId]
 		handler.ServeHTTP(recorder, req)
 
-		// if recorder.Code != 200 {
-		// 	panic("wat")
-		// }
+		if recorder.Code != 200 {
+			panic("wat")
+		}
 
 		reqId += 1
 	}
