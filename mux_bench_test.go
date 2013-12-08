@@ -20,22 +20,32 @@ func helloHandler(rw http.ResponseWriter, r *http.Request) {
 }
 
 //
-// Types / Methods needed by gocraft/web:
+// Benchmarks for gocraft/web:
 //
-type BenchContext struct{}
+type BenchContext struct {
+	MyField string
+}
+type BenchContextB struct {
+	*BenchContext
+}
+type BenchContextC struct {
+	*BenchContextB
+}
 func (c *BenchContext) Action(w web.ResponseWriter, r *web.Request) {
 	fmt.Fprintf(w, "hello")
 }
 
+func (c *BenchContextB) Action(w web.ResponseWriter, r *web.Request) {
+	fmt.Fprintf(w, c.MyField)
+}
 
-//
-// Benchmarks for gocraft/web:
-//
+func gocraftWebHandler(rw web.ResponseWriter, r *web.Request) {
+	fmt.Fprintf(rw, "hello")
+}
+
 func BenchmarkGocraftWebSimple(b *testing.B) {
 	router := web.New(BenchContext{})
-	router.Get("/action",func(rw web.ResponseWriter, r *web.Request) {
-		fmt.Fprintf(rw, "hello")
-	})
+	router.Get("/action", gocraftWebHandler)
 	
 	rw, req := testRequest("GET", "/action")
 	
@@ -63,6 +73,67 @@ func BenchmarkGocraftWebRoute300(b *testing.B) {
 
 func BenchmarkGocraftWebRoute3000(b *testing.B) {
 	benchmarkRoutesN(b, 200, gocraftWebRouterFor)
+}
+
+func BenchmarkGocraftWebMiddleware(b *testing.B) {
+	nextMw := func(rw web.ResponseWriter, r *web.Request, next web.NextMiddlewareFunc) {
+		next(rw, r)
+	}
+
+	router := web.New(BenchContext{})
+	router.Middleware(nextMw)
+	router.Middleware(nextMw)
+	routerB := router.Subrouter(BenchContextB{}, "/b")
+	routerB.Middleware(nextMw)
+	routerB.Middleware(nextMw)
+	routerC := routerB.Subrouter(BenchContextC{}, "/c")
+	routerC.Middleware(nextMw)
+	routerC.Middleware(nextMw)
+	routerC.Get("/action", gocraftWebHandler)
+
+	rw, req := testRequest("GET", "/b/c/action")
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		router.ServeHTTP(rw, req)
+		// if rw.Code != 200 { panic("no good") }
+	}
+}
+
+// Composite scenario:
+// - 6 middlewares
+// - top middleware allocates a context and sets a field on it
+// - handler reads that value and renders it
+// - 150 routes (10 resources on 3 namespaces)
+func BenchmarkGocraftWebComposite(b *testing.B) {
+	namespaces, resources, requests := resourceSetup(10)
+	
+	nextMw := func(rw web.ResponseWriter, r *web.Request, next web.NextMiddlewareFunc) {
+		next(rw, r)
+	}
+	
+	router := web.New(BenchContext{})
+	router.Middleware(func(c *BenchContext, rw web.ResponseWriter, r *web.Request, next web.NextMiddlewareFunc) {
+		c.MyField = r.URL.Path
+		next(rw, r)
+	})
+	router.Middleware(nextMw)
+	router.Middleware(nextMw)
+	
+	for _, ns := range namespaces {
+		subrouter := router.Subrouter(BenchContextB{}, "/"+ns)
+		subrouter.Middleware(nextMw)
+		subrouter.Middleware(nextMw)
+		subrouter.Middleware(nextMw)
+		for _, res := range resources {
+			subrouter.Get("/"+res, (*BenchContextB).Action)
+			subrouter.Post("/"+res, (*BenchContextB).Action)
+			subrouter.Get("/"+res+"/:id", (*BenchContextB).Action)
+			subrouter.Put("/"+res+"/:id", (*BenchContextB).Action)
+			subrouter.Delete("/"+res+"/:id", (*BenchContextB).Action)
+		}
+	}
+	benchmarkRoutes(b, router, requests)
 }
 
 //
