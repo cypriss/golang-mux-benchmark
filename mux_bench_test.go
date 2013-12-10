@@ -259,7 +259,7 @@ func BenchmarkCodegangstaMartiniMiddleware(b *testing.B) {
 	martiniMiddleware := func(rw http.ResponseWriter, r *http.Request, c martini.Context) {
 		c.Next()
 	}
-	
+
 	r := martini.NewRouter()
 	m := martini.New()
 	m.Use(martiniMiddleware)
@@ -289,11 +289,11 @@ func BenchmarkCodegangstaMartiniComposite(b *testing.B) {
 	martiniMiddleware := func(rw http.ResponseWriter, r *http.Request, c martini.Context) {
 		c.Next()
 	}
-	
+
 	handler := func(rw http.ResponseWriter, r *http.Request, c *martiniContext) {
 		fmt.Fprintf(rw, c.MyField)
 	}
-	
+
 	r := martini.NewRouter()
 	m := martini.New()
 	m.Use(func(rw http.ResponseWriter, r *http.Request, c martini.Context) {
@@ -381,19 +381,17 @@ func piluTrafficCompositeHandler(rw traffic.ResponseWriter, r *traffic.Request) 
 type trafficMiddleware struct{}
 type trafficCompositeMiddleware struct{}
 
-func (middleware *trafficMiddleware) ServeHTTP(w traffic.ResponseWriter, r *traffic.Request, next traffic.NextMiddlewareFunc) (traffic.ResponseWriter, *traffic.Request) {
+func (middleware *trafficMiddleware) ServeHTTP(w traffic.ResponseWriter, r *traffic.Request, next traffic.NextMiddlewareFunc) {
 	if nextMiddleware := next(); nextMiddleware != nil {
-		w, r = nextMiddleware.ServeHTTP(w, r, next)
+		nextMiddleware.ServeHTTP(w, r, next)
 	}
-	return w, r
 }
 
-func (middleware *trafficCompositeMiddleware) ServeHTTP(w traffic.ResponseWriter, r *traffic.Request, next traffic.NextMiddlewareFunc) (traffic.ResponseWriter, *traffic.Request) {
+func (middleware *trafficCompositeMiddleware) ServeHTTP(w traffic.ResponseWriter, r *traffic.Request, next traffic.NextMiddlewareFunc) {
 	if nextMiddleware := next(); nextMiddleware != nil {
 		w.SetVar("field", r.URL.Path)
-		w, r = nextMiddleware.ServeHTTP(w, r, next)
+		nextMiddleware.ServeHTTP(w, r, next)
 	}
-	return w, r
 }
 
 func piluTrafficRouterFor(namespaces []string, resources []string) http.Handler {
