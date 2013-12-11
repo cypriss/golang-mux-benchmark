@@ -1,0 +1,70 @@
+<!doctype html>
+<html>
+  <head>
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
+    <script type="text/javascript">
+    $(function () {
+      <% @results.each do |benchmark, results| %>
+        $('#container-<%= benchmark %>').highcharts({
+          chart: {
+            type: 'column'
+          },
+          title: {
+            text: '<%= benchmark %>'
+          },
+          xAxis: {
+            categories: [
+              <%= results.collect{|name, value| "'#{name}'"}.join ", " %>
+            ],
+            labels: {
+              rotation: -45,
+              align: 'right',
+              style: {
+                fontSize: '13px',
+                fontFamily: 'Verdana, sans-serif'
+              }
+            }
+          },
+          yAxis: {
+            min: 0,
+            title: {
+              text: 'ns/op'
+            }
+          },
+          legend: {
+            enabled: false
+          },
+          tooltip: {
+            pointFormat: '<b>{point.y:.1f} ns/op</b>',
+          },
+          series: [{
+            data: [<%= results.collect{|name, value| value}.join ", " %>]
+          }]
+        });
+      <% end %>
+    });
+    </script>
+  </head>
+  <style>
+    #container {
+      width: 800px;
+      margin: 0 auto;
+    }
+    #nav li {
+      display: inline;
+      margin-right: 5px;
+    }
+  </style>
+<body>
+  <div id="container">
+    <ul id="nav">
+      <% @benchmarks.each do |benchmark| %>
+        <li><a href="#container-<%= benchmark %>"><%= benchmark %></a></li>
+      <% end %>
+    </ul>
+    <% @benchmarks.each do |benchmark| %>
+      <div id="container-<%= benchmark %>" style="min-width: 310px; height: 400px; margin: 0 auto"></div>
+    <% end %>
+  </div>
+  <script src="highcharts.js"></script>
+</body>

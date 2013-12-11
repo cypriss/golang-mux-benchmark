@@ -59,7 +59,7 @@ func gocraftWebRouterFor(namespaces []string, resources []string) http.Handler {
 	return router
 }
 
-func BenchmarkGocraftWebSimple(b *testing.B) {
+func BenchmarkGocraftWeb_Simple(b *testing.B) {
 	router := web.New(BenchContext{})
 	router.Get("/action", gocraftWebHandler)
 
@@ -71,27 +71,27 @@ func BenchmarkGocraftWebSimple(b *testing.B) {
 	}
 }
 
-func BenchmarkGocraftWebRoute15(b *testing.B) {
+func BenchmarkGocraftWeb_Route15(b *testing.B) {
 	benchmarkRoutesN(b, 1, gocraftWebRouterFor)
 }
 
-func BenchmarkGocraftWebRoute75(b *testing.B) {
+func BenchmarkGocraftWeb_Route75(b *testing.B) {
 	benchmarkRoutesN(b, 5, gocraftWebRouterFor)
 }
 
-func BenchmarkGocraftWebRoute150(b *testing.B) {
+func BenchmarkGocraftWeb_Route150(b *testing.B) {
 	benchmarkRoutesN(b, 10, gocraftWebRouterFor)
 }
 
-func BenchmarkGocraftWebRoute300(b *testing.B) {
+func BenchmarkGocraftWeb_Route300(b *testing.B) {
 	benchmarkRoutesN(b, 20, gocraftWebRouterFor)
 }
 
-func BenchmarkGocraftWebRoute3000(b *testing.B) {
+func BenchmarkGocraftWeb_Route3000(b *testing.B) {
 	benchmarkRoutesN(b, 200, gocraftWebRouterFor)
 }
 
-func BenchmarkGocraftWebMiddleware(b *testing.B) {
+func BenchmarkGocraftWeb_Middleware(b *testing.B) {
 	nextMw := func(rw web.ResponseWriter, r *web.Request, next web.NextMiddlewareFunc) {
 		next(rw, r)
 	}
@@ -165,7 +165,7 @@ func gorillaMuxRouterFor(namespaces []string, resources []string) http.Handler {
 	return router
 }
 
-func BenchmarkGorillaMuxSimple(b *testing.B) {
+func BenchmarkGorillaMux_Simple(b *testing.B) {
 	router := mux.NewRouter()
 	router.HandleFunc("/action", helloHandler).Methods("GET")
 
@@ -177,23 +177,23 @@ func BenchmarkGorillaMuxSimple(b *testing.B) {
 	}
 }
 
-func BenchmarkGorillaMuxRoute15(b *testing.B) {
+func BenchmarkGorillaMux_Route15(b *testing.B) {
 	benchmarkRoutesN(b, 1, gorillaMuxRouterFor)
 }
 
-func BenchmarkGorillaMuxRoute75(b *testing.B) {
+func BenchmarkGorillaMux_Route75(b *testing.B) {
 	benchmarkRoutesN(b, 5, gorillaMuxRouterFor)
 }
 
-func BenchmarkGorillaMuxRoute150(b *testing.B) {
+func BenchmarkGorillaMux_Route150(b *testing.B) {
 	benchmarkRoutesN(b, 10, gorillaMuxRouterFor)
 }
 
-func BenchmarkGorillaMuxRoute300(b *testing.B) {
+func BenchmarkGorillaMux_Route300(b *testing.B) {
 	benchmarkRoutesN(b, 20, gorillaMuxRouterFor)
 }
 
-func BenchmarkGorillaMuxRoute3000(b *testing.B) {
+func BenchmarkGorillaMux_Route3000(b *testing.B) {
 	benchmarkRoutesN(b, 200, gorillaMuxRouterFor)
 }
 
@@ -220,7 +220,7 @@ func codegangstaMartiniRouterFor(namespaces []string, resources []string) http.H
 	return martini
 }
 
-func BenchmarkCodegangstaMartiniSimple(b *testing.B) {
+func BenchmarkCodegangstaMartini_Simple(b *testing.B) {
 	r := martini.NewRouter()
 	m := martini.New()
 	m.Action(r.Handle)
@@ -235,31 +235,31 @@ func BenchmarkCodegangstaMartiniSimple(b *testing.B) {
 	}
 }
 
-func BenchmarkCodegangstaMartiniRoute15(b *testing.B) {
+func BenchmarkCodegangstaMartini_Route15(b *testing.B) {
 	benchmarkRoutesN(b, 1, codegangstaMartiniRouterFor)
 }
 
-func BenchmarkCodegangstaMartiniRoute75(b *testing.B) {
+func BenchmarkCodegangstaMartini_Route75(b *testing.B) {
 	benchmarkRoutesN(b, 5, codegangstaMartiniRouterFor)
 }
 
-func BenchmarkCodegangstaMartiniRoute150(b *testing.B) {
+func BenchmarkCodegangstaMartini_Route150(b *testing.B) {
 	benchmarkRoutesN(b, 10, codegangstaMartiniRouterFor)
 }
 
-func BenchmarkCodegangstaMartiniRoute300(b *testing.B) {
+func BenchmarkCodegangstaMartini_Route300(b *testing.B) {
 	benchmarkRoutesN(b, 20, codegangstaMartiniRouterFor)
 }
 
-func BenchmarkCodegangstaMartiniRoute3000(b *testing.B) {
+func BenchmarkCodegangstaMartini_Route3000(b *testing.B) {
 	benchmarkRoutesN(b, 200, codegangstaMartiniRouterFor)
 }
 
-func BenchmarkCodegangstaMartiniMiddleware(b *testing.B) {
+func BenchmarkCodegangstaMartini_Middleware(b *testing.B) {
 	martiniMiddleware := func(rw http.ResponseWriter, r *http.Request, c martini.Context) {
 		c.Next()
 	}
-	
+
 	r := martini.NewRouter()
 	m := martini.New()
 	m.Use(martiniMiddleware)
@@ -283,17 +283,17 @@ func BenchmarkCodegangstaMartiniMiddleware(b *testing.B) {
 	}
 }
 
-func BenchmarkCodegangstaMartiniComposite(b *testing.B) {
+func BenchmarkCodegangstaMartini_Composite(b *testing.B) {
 	namespaces, resources, requests := resourceSetup(10)
 
 	martiniMiddleware := func(rw http.ResponseWriter, r *http.Request, c martini.Context) {
 		c.Next()
 	}
-	
+
 	handler := func(rw http.ResponseWriter, r *http.Request, c *martiniContext) {
 		fmt.Fprintf(rw, c.MyField)
 	}
-	
+
 	r := martini.NewRouter()
 	m := martini.New()
 	m.Use(func(rw http.ResponseWriter, r *http.Request, c martini.Context) {
@@ -336,7 +336,7 @@ func tigertonicRouterFor(namespaces []string, resources []string) http.Handler {
 	return mux
 }
 
-func BenchmarkRcrowleyTigerTonicSimple(b *testing.B) {
+func BenchmarkRcrowleyTigerTonic_Simple(b *testing.B) {
 	mux := tigertonic.NewTrieServeMux()
 	mux.HandleFunc("GET", "/action", helloHandler)
 	rw, r := testRequest("GET", "/action")
@@ -346,23 +346,23 @@ func BenchmarkRcrowleyTigerTonicSimple(b *testing.B) {
 	}
 }
 
-func BenchmarkRcrowleyTigerTonicRoute15(b *testing.B) {
+func BenchmarkRcrowleyTigerTonic_Route15(b *testing.B) {
 	benchmarkRoutesN(b, 1, tigertonicRouterFor)
 }
 
-func BenchmarkRcrowleyTigerTonicRoute75(b *testing.B) {
+func BenchmarkRcrowleyTigerTonic_Route75(b *testing.B) {
 	benchmarkRoutesN(b, 5, tigertonicRouterFor)
 }
 
-func BenchmarkRcrowleyTigerTonicRoute150(b *testing.B) {
+func BenchmarkRcrowleyTigerTonic_Route150(b *testing.B) {
 	benchmarkRoutesN(b, 10, tigertonicRouterFor)
 }
 
-func BenchmarkRcrowleyTigerTonicRoute300(b *testing.B) {
+func BenchmarkRcrowleyTigerTonic_Route300(b *testing.B) {
 	benchmarkRoutesN(b, 20, tigertonicRouterFor)
 }
 
-func BenchmarkRcrowleyTigerTonicRoute3000(b *testing.B) {
+func BenchmarkRcrowleyTigerTonic_Route3000(b *testing.B) {
 	benchmarkRoutesN(b, 200, tigertonicRouterFor)
 }
 
@@ -381,23 +381,21 @@ func piluTrafficCompositeHandler(rw traffic.ResponseWriter, r *traffic.Request) 
 type trafficMiddleware struct{}
 type trafficCompositeMiddleware struct{}
 
-func (middleware *trafficMiddleware) ServeHTTP(w traffic.ResponseWriter, r *traffic.Request, next traffic.NextMiddlewareFunc) (traffic.ResponseWriter, *traffic.Request) {
+func (middleware *trafficMiddleware) ServeHTTP(w traffic.ResponseWriter, r *traffic.Request, next traffic.NextMiddlewareFunc) {
 	if nextMiddleware := next(); nextMiddleware != nil {
-		w, r = nextMiddleware.ServeHTTP(w, r, next)
+		nextMiddleware.ServeHTTP(w, r, next)
 	}
-	return w, r
 }
 
-func (middleware *trafficCompositeMiddleware) ServeHTTP(w traffic.ResponseWriter, r *traffic.Request, next traffic.NextMiddlewareFunc) (traffic.ResponseWriter, *traffic.Request) {
+func (middleware *trafficCompositeMiddleware) ServeHTTP(w traffic.ResponseWriter, r *traffic.Request, next traffic.NextMiddlewareFunc) {
 	if nextMiddleware := next(); nextMiddleware != nil {
 		w.SetVar("field", r.URL.Path)
-		w, r = nextMiddleware.ServeHTTP(w, r, next)
+		nextMiddleware.ServeHTTP(w, r, next)
 	}
-	return w, r
 }
 
 func piluTrafficRouterFor(namespaces []string, resources []string) http.Handler {
-	traffic.SetVar("env", "production")
+	/* traffic.SetVar("env", "production") */
 	router := traffic.New()
 	for _, ns := range namespaces {
 		for _, res := range resources {
@@ -411,7 +409,7 @@ func piluTrafficRouterFor(namespaces []string, resources []string) http.Handler 
 	return router
 }
 
-func BenchmarkPiluTrafficSimple(b *testing.B) {
+func BenchmarkPiluTraffic_Simple(b *testing.B) {
 	traffic.SetVar("env", "production")
 	router := traffic.New()
 	router.Get("/action", piluTrafficHandler)
@@ -422,27 +420,27 @@ func BenchmarkPiluTrafficSimple(b *testing.B) {
 	}
 }
 
-func BenchmarkPiluTrafficRoute15(b *testing.B) {
+func BenchmarkPiluTraffic_Route15(b *testing.B) {
 	benchmarkRoutesN(b, 1, piluTrafficRouterFor)
 }
 
-func BenchmarkPiluTrafficRoute75(b *testing.B) {
+func BenchmarkPiluTraffic_Route75(b *testing.B) {
 	benchmarkRoutesN(b, 5, piluTrafficRouterFor)
 }
 
-func BenchmarkPiluTrafficRoute150(b *testing.B) {
+func BenchmarkPiluTraffic_Route150(b *testing.B) {
 	benchmarkRoutesN(b, 10, piluTrafficRouterFor)
 }
 
-func BenchmarkPiluTrafficRoute300(b *testing.B) {
+func BenchmarkPiluTraffic_Route300(b *testing.B) {
 	benchmarkRoutesN(b, 20, piluTrafficRouterFor)
 }
 
-func BenchmarkPiluTrafficRoute3000(b *testing.B) {
+func BenchmarkPiluTraffic_Route3000(b *testing.B) {
 	benchmarkRoutesN(b, 200, piluTrafficRouterFor)
 }
 
-func BenchmarkPiluTrafficMiddleware(b *testing.B) {
+func BenchmarkPiluTraffic_Middleware(b *testing.B) {
 	traffic.SetVar("env", "production")
 	router := traffic.New()
 	router.Use(&trafficMiddleware{})
@@ -464,7 +462,7 @@ func BenchmarkPiluTrafficMiddleware(b *testing.B) {
 	}
 }
 
-func BenchmarkPiluTrafficComposite(b *testing.B) {
+func BenchmarkPiluTraffic_Composite(b *testing.B) {
 	namespaces, resources, requests := resourceSetup(10)
 
 	traffic.SetVar("env", "production")
