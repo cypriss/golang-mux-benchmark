@@ -395,7 +395,7 @@ func (middleware *trafficCompositeMiddleware) ServeHTTP(w traffic.ResponseWriter
 }
 
 func piluTrafficRouterFor(namespaces []string, resources []string) http.Handler {
-	/* traffic.SetVar("env", "production") */
+	traffic.SetVar("env", "production")
 	router := traffic.New()
 	for _, ns := range namespaces {
 		for _, res := range resources {
