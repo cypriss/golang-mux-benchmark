@@ -116,7 +116,7 @@ func BenchmarkGocraftWeb_Middleware(b *testing.B) {
 	}
 }
 
-func BenchmarkGocraftWebComposite(b *testing.B) {
+func BenchmarkGocraftWeb_Composite(b *testing.B) {
 	namespaces, resources, requests := resourceSetup(10)
 
 	nextMw := func(rw web.ResponseWriter, r *web.Request, next web.NextMiddlewareFunc) {

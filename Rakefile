@@ -54,7 +54,7 @@ class ChartsGenerator
 end
 
 task :default do
-  cmd = "go test -bench ."
+  cmd = "go test -bench=. 2>/dev/null"
   puts "running benchmarks..."
   puts cmd
   output = `#{cmd}`
