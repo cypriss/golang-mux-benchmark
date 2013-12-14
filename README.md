@@ -10,6 +10,7 @@ A collection of benchmarks for popular Go web frameworks.
 *  [Martini](https://github.com/codegangsta/martini)
 *  [Tiger Tonic](https://github.com/rcrowley/go-tigertonic)
 *  [Traffic](https://github.com/pilu/traffic)
+*  [pat](https://github.com/bmizerany/pat)
 
 # Benchmarks
 

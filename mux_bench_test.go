@@ -3,6 +3,7 @@ package mux_bench_test
 import (
 	"crypto/sha1"
 	"fmt"
+	"github.com/bmizerany/pat"
 	"github.com/codegangsta/martini"
 	"github.com/gocraft/web"
 	"github.com/gorilla/mux"
@@ -484,6 +485,62 @@ func BenchmarkPiluTraffic_Composite(b *testing.B) {
 		}
 	}
 	benchmarkRoutes(b, router, requests)
+}
+
+//
+// Benchmarks for bmizerany/pat:
+//
+type patHandler struct{}
+
+func (p *patHandler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(rw, "hello")
+}
+
+func patRouterFor(namespaces []string, resources []string) http.Handler {
+	m := pat.New()
+	handler := new(patHandler)
+	for _, ns := range namespaces {
+		for _, res := range resources {
+			m.Get("/"+ns+"/"+res, handler)
+			m.Post("/"+ns+"/"+res, handler)
+			m.Get("/"+ns+"/"+res+"/:id", handler)
+			m.Put("/"+ns+"/"+res+"/:id", handler)
+			m.Del("/"+ns+"/"+res+"/:id", handler)
+		}
+	}
+	return m
+}
+
+func BenchmarkPat_Simple(b *testing.B) {
+	m := pat.New()
+	m.Get("/ation", new(patHandler))
+
+	rw, req := testRequest("GET", "/action")
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		m.ServeHTTP(rw, req)
+	}
+}
+
+func BenchmarkPat_Route15(b *testing.B) {
+	benchmarkRoutesN(b, 1, patRouterFor)
+}
+
+func BenchmarkPat_Route75(b *testing.B) {
+	benchmarkRoutesN(b, 5, patRouterFor)
+}
+
+func BenchmarkPat_Route150(b *testing.B) {
+	benchmarkRoutesN(b, 10, patRouterFor)
+}
+
+func BenchmarkPat_Route300(b *testing.B) {
+	benchmarkRoutesN(b, 20, patRouterFor)
+}
+
+func BenchmarkPat_Route3000(b *testing.B) {
+	benchmarkRoutesN(b, 200, patRouterFor)
 }
 
 //
