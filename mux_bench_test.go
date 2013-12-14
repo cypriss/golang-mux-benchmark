@@ -7,6 +7,7 @@ import (
 	"github.com/codegangsta/martini"
 	"github.com/gocraft/web"
 	"github.com/gorilla/mux"
+	"github.com/julienschmidt/httprouter"
 	"github.com/pilu/traffic"
 	"github.com/rcrowley/go-tigertonic"
 	"io"
@@ -541,6 +542,60 @@ func BenchmarkPat_Route300(b *testing.B) {
 
 func BenchmarkPat_Route3000(b *testing.B) {
 	benchmarkRoutesN(b, 200, patRouterFor)
+}
+
+//
+// Benchmarks for julienschmidt/httprouter:
+//
+func httpRouterHandle(rw http.ResponseWriter, _ *http.Request, _ map[string]string) {
+	fmt.Fprintf(rw, "hello")
+}
+
+func httpRouterRouterFor(namespaces []string, resources []string) http.Handler {
+	router := httprouter.New()
+
+	for _, ns := range namespaces {
+		for _, res := range resources {
+			router.GET("/"+ns+"/"+res, httpRouterHandle)
+			router.POST("/"+ns+"/"+res, httpRouterHandle)
+			router.GET("/"+ns+"/"+res+"/:id", httpRouterHandle)
+			router.PUT("/"+ns+"/"+res+"/:id", httpRouterHandle)
+			router.DELETE("/"+ns+"/"+res+"/:id", httpRouterHandle)
+		}
+	}
+	return router
+}
+
+func BenchmarkHttpRouter_Simple(b *testing.B) {
+	router := httprouter.New()
+	router.Handle("GET", "/action", httpRouterHandle)
+
+	rw, req := testRequest("GET", "/action")
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		router.ServeHTTP(rw, req)
+	}
+}
+
+func BenchmarkHttpRouter_Route15(b *testing.B) {
+	benchmarkRoutesN(b, 1, httpRouterRouterFor)
+}
+
+func BenchmarkHttpRouter_Route75(b *testing.B) {
+	benchmarkRoutesN(b, 5, httpRouterRouterFor)
+}
+
+func BenchmarkHttpRouter_Route150(b *testing.B) {
+	benchmarkRoutesN(b, 10, httpRouterRouterFor)
+}
+
+func BenchmarkHttpRouter_Route300(b *testing.B) {
+	benchmarkRoutesN(b, 20, httpRouterRouterFor)
+}
+
+func BenchmarkHttpRouter_Route3000(b *testing.B) {
+	benchmarkRoutesN(b, 200, httpRouterRouterFor)
 }
 
 //
