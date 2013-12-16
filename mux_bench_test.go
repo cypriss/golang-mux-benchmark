@@ -159,9 +159,9 @@ func gorillaMuxRouterFor(namespaces []string, resources []string) http.Handler {
 		for _, res := range resources {
 			subrouter.HandleFunc("/"+res, helloHandler).Methods("GET")
 			subrouter.HandleFunc("/"+res, helloHandler).Methods("POST")
-			subrouter.HandleFunc("/"+res+"/:id", helloHandler).Methods("GET")
-			subrouter.HandleFunc("/"+res+"/:id", helloHandler).Methods("PUT")
-			subrouter.HandleFunc("/"+res+"/:id", helloHandler).Methods("DELETE")
+			subrouter.HandleFunc("/"+res+"/{id}", helloHandler).Methods("GET")
+			subrouter.HandleFunc("/"+res+"/{id}", helloHandler).Methods("PUT")
+			subrouter.HandleFunc("/"+res+"/{id}", helloHandler).Methods("DELETE")
 		}
 	}
 	return router
