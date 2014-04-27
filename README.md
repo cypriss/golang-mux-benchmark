@@ -7,7 +7,7 @@ A collection of benchmarks for popular Go web frameworks.
 
 *  [gocraft/web](https://github.com/gocraft/web)
 *  [gorilla/mux](https://github.com/gorilla/mux)
-*  [Martini](https://github.com/codegangsta/martini)
+*  [Martini](https://github.com/go-martini/martini)
 *  [Tiger Tonic](https://github.com/rcrowley/go-tigertonic)
 *  [Traffic](https://github.com/pilu/traffic)
 *  [go-json-rest](https://github.com/ant0ine/go-json-rest)
