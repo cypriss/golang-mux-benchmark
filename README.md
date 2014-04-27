@@ -11,6 +11,7 @@ A collection of benchmarks for popular Go web frameworks.
 *  [Tiger Tonic](https://github.com/rcrowley/go-tigertonic)
 *  [Traffic](https://github.com/pilu/traffic)
 *  [go-json-rest](https://github.com/ant0ine/go-json-rest)
+*  [Goji](https://github.com/zenazn/goji/)
 
 # Benchmarks
 
@@ -128,5 +129,14 @@ BenchmarkGoJsonRest_Route300             200000       8477 ns/op
 BenchmarkGoJsonRest_Route3000            200000       8518 ns/op
 BenchmarkGoJsonRest_Middleware           500000       5785 ns/op
 BenchmarkGoJsonRest_Composite            200000       7588 ns/op
+
+BenchmarkGoji_Simple                    5000000        579 ns/op
+BenchmarkGoji_Route15                   1000000       1440 ns/op
+BenchmarkGoji_Route75                   1000000       2240 ns/op
+BenchmarkGoji_Route150                   500000       3237 ns/op
+BenchmarkGoji_Route300                   500000       5354 ns/op
+BenchmarkGoji_Route3000                   50000      40676 ns/op
+BenchmarkGoji_Middleware                5000000        694 ns/op
+BenchmarkGoji_Composite                  500000       3999 ns/op
 ```
 
