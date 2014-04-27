@@ -3,15 +3,27 @@ package mux_bench_test
 import (
 	"crypto/sha1"
 	"fmt"
-	"github.com/codegangsta/martini"
-	"github.com/gocraft/web"
-	"github.com/gorilla/mux"
-	"github.com/pilu/traffic"
-	"github.com/rcrowley/go-tigertonic"
 	"io"
+	"io/ioutil"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/gocraft/web"
+
+	"github.com/gorilla/mux"
+
+	"github.com/go-martini/martini"
+
+	"github.com/rcrowley/go-tigertonic"
+
+	"github.com/pilu/traffic"
+
+	"github.com/ant0ine/go-json-rest/rest"
+
+	//"github.com/zenazn/goji"
+	gojiweb "github.com/zenazn/goji/web"
 )
 
 //
@@ -60,6 +72,9 @@ func gocraftWebRouterFor(namespaces []string, resources []string) http.Handler {
 }
 
 func BenchmarkGocraftWeb_Simple(b *testing.B) {
+	// Hook into first function to disable logging
+	log.SetOutput(ioutil.Discard)
+
 	router := web.New(BenchContext{})
 	router.Get("/action", gocraftWebHandler)
 
@@ -198,13 +213,13 @@ func BenchmarkGorillaMux_Route3000(b *testing.B) {
 }
 
 //
-// Benchmarks for codegangsta/martini:
+// Benchmarks for go-martini/martini:
 //
 type martiniContext struct {
 	MyField string
 }
 
-func codegangstaMartiniRouterFor(namespaces []string, resources []string) http.Handler {
+func martiniRouterFor(namespaces []string, resources []string) http.Handler {
 	router := martini.NewRouter()
 	martini := martini.New()
 	martini.Action(router.Handle)
@@ -220,7 +235,7 @@ func codegangstaMartiniRouterFor(namespaces []string, resources []string) http.H
 	return martini
 }
 
-func BenchmarkCodegangstaMartini_Simple(b *testing.B) {
+func BenchmarkMartini_Simple(b *testing.B) {
 	r := martini.NewRouter()
 	m := martini.New()
 	m.Action(r.Handle)
@@ -235,27 +250,27 @@ func BenchmarkCodegangstaMartini_Simple(b *testing.B) {
 	}
 }
 
-func BenchmarkCodegangstaMartini_Route15(b *testing.B) {
-	benchmarkRoutesN(b, 1, codegangstaMartiniRouterFor)
+func BenchmarkMartini_Route15(b *testing.B) {
+	benchmarkRoutesN(b, 1, martiniRouterFor)
 }
 
-func BenchmarkCodegangstaMartini_Route75(b *testing.B) {
-	benchmarkRoutesN(b, 5, codegangstaMartiniRouterFor)
+func BenchmarkMartini_Route75(b *testing.B) {
+	benchmarkRoutesN(b, 5, martiniRouterFor)
 }
 
-func BenchmarkCodegangstaMartini_Route150(b *testing.B) {
-	benchmarkRoutesN(b, 10, codegangstaMartiniRouterFor)
+func BenchmarkMartini_Route150(b *testing.B) {
+	benchmarkRoutesN(b, 10, martiniRouterFor)
 }
 
-func BenchmarkCodegangstaMartini_Route300(b *testing.B) {
-	benchmarkRoutesN(b, 20, codegangstaMartiniRouterFor)
+func BenchmarkMartini_Route300(b *testing.B) {
+	benchmarkRoutesN(b, 20, martiniRouterFor)
 }
 
-func BenchmarkCodegangstaMartini_Route3000(b *testing.B) {
-	benchmarkRoutesN(b, 200, codegangstaMartiniRouterFor)
+func BenchmarkMartini_Route3000(b *testing.B) {
+	benchmarkRoutesN(b, 200, martiniRouterFor)
 }
 
-func BenchmarkCodegangstaMartini_Middleware(b *testing.B) {
+func BenchmarkMartini_Middleware(b *testing.B) {
 	martiniMiddleware := func(rw http.ResponseWriter, r *http.Request, c martini.Context) {
 		c.Next()
 	}
@@ -283,7 +298,7 @@ func BenchmarkCodegangstaMartini_Middleware(b *testing.B) {
 	}
 }
 
-func BenchmarkCodegangstaMartini_Composite(b *testing.B) {
+func BenchmarkMartini_Composite(b *testing.B) {
 	namespaces, resources, requests := resourceSetup(10)
 
 	martiniMiddleware := func(rw http.ResponseWriter, r *http.Request, c martini.Context) {
@@ -487,10 +502,274 @@ func BenchmarkPiluTraffic_Composite(b *testing.B) {
 }
 
 //
+// Benchmarks for go-json-rest/rest:
+//
+func goJsonRestRouterFor(namespaces []string, resources []string) http.Handler {
+	handler := rest.ResourceHandler{
+		DisableJsonIndent: true,
+		DisableXPoweredBy: true,
+		Logger:            log.New(ioutil.Discard, "", 0),
+	}
+	routes := make([]*rest.Route, 0, len(namespaces)*len(resources)*5)
+	for _, ns := range namespaces {
+		for _, res := range resources {
+			routes = append(routes, &rest.Route{"GET", "/" + ns + "/" + res, goJsonRestHelloHandler})
+			routes = append(routes, &rest.Route{"POST", "/" + ns + "/" + res, goJsonRestHelloHandler})
+			routes = append(routes, &rest.Route{"GET", "/" + ns + "/" + res + "/:id", goJsonRestHelloHandler})
+			routes = append(routes, &rest.Route{"PUT", "/" + ns + "/" + res + "/:id", goJsonRestHelloHandler})
+			routes = append(routes, &rest.Route{"DELETE", "/" + ns + "/" + res + "/:id", goJsonRestHelloHandler})
+		}
+	}
+	handler.SetRoutes(routes...)
+	return &handler
+}
+
+func BenchmarkGoJsonRest_Simple(b *testing.B) {
+	handler := rest.ResourceHandler{
+		DisableJsonIndent: true,
+		DisableXPoweredBy: true,
+		Logger:            log.New(ioutil.Discard, "", 0),
+	}
+	handler.SetRoutes(
+		&rest.Route{"GET", "/action", goJsonRestHelloHandler},
+	)
+
+	rw, req := testRequest("GET", "/action")
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		handler.ServeHTTP(rw, req)
+	}
+}
+
+func BenchmarkGoJsonRest_Route15(b *testing.B) {
+	benchmarkRoutesN(b, 1, goJsonRestRouterFor)
+}
+
+func BenchmarkGoJsonRest_Route75(b *testing.B) {
+	benchmarkRoutesN(b, 5, goJsonRestRouterFor)
+}
+
+func BenchmarkGoJsonRest_Route150(b *testing.B) {
+	benchmarkRoutesN(b, 10, goJsonRestRouterFor)
+}
+
+func BenchmarkGoJsonRest_Route300(b *testing.B) {
+	benchmarkRoutesN(b, 20, goJsonRestRouterFor)
+}
+
+func BenchmarkGoJsonRest_Route3000(b *testing.B) {
+	benchmarkRoutesN(b, 200, goJsonRestRouterFor)
+}
+
+type benchmarkGoJsonRestMiddleware struct{}
+
+func (mw *benchmarkGoJsonRestMiddleware) MiddlewareFunc(h rest.HandlerFunc) rest.HandlerFunc {
+	return func(w rest.ResponseWriter, r *rest.Request) {
+		h(w, r)
+	}
+}
+func BenchmarkGoJsonRest_Middleware(b *testing.B) {
+	handler := rest.ResourceHandler{
+		DisableJsonIndent: true,
+		DisableXPoweredBy: true,
+		Logger:            log.New(ioutil.Discard, "", 0),
+		PreRoutingMiddlewares: []rest.Middleware{
+			&benchmarkGoJsonRestMiddleware{},
+			&benchmarkGoJsonRestMiddleware{},
+			&benchmarkGoJsonRestMiddleware{},
+			&benchmarkGoJsonRestMiddleware{},
+			&benchmarkGoJsonRestMiddleware{},
+			&benchmarkGoJsonRestMiddleware{},
+		},
+	}
+	handler.SetRoutes(
+		&rest.Route{"GET", "/action", goJsonRestHelloHandler},
+	)
+
+	rw, req := testRequest("GET", "/action")
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		handler.ServeHTTP(rw, req)
+		if rw.Code != 200 {
+			panic("no good")
+		}
+	}
+}
+
+type benchmarkGoJsonRestCompositeMiddleware struct{}
+
+func (mw *benchmarkGoJsonRestCompositeMiddleware) MiddlewareFunc(h rest.HandlerFunc) rest.HandlerFunc {
+	return func(w rest.ResponseWriter, r *rest.Request) {
+		r.Env["field"] = r.URL.Path
+		h(w, r)
+	}
+}
+func BenchmarkGoJsonRest_Composite(b *testing.B) {
+	namespaces, resources, requests := resourceSetup(10)
+
+	handler := rest.ResourceHandler{
+		DisableJsonIndent: true,
+		DisableXPoweredBy: true,
+		Logger:            log.New(ioutil.Discard, "", 0),
+		PreRoutingMiddlewares: []rest.Middleware{
+			&benchmarkGoJsonRestCompositeMiddleware{},
+			&benchmarkGoJsonRestMiddleware{},
+			&benchmarkGoJsonRestMiddleware{},
+			&benchmarkGoJsonRestMiddleware{},
+			&benchmarkGoJsonRestMiddleware{},
+			&benchmarkGoJsonRestMiddleware{},
+			&benchmarkGoJsonRestMiddleware{},
+		},
+	}
+	routes := make([]*rest.Route, 0, len(namespaces)*len(resources)*5)
+	for _, ns := range namespaces {
+		for _, res := range resources {
+			routes = append(routes, &rest.Route{"GET", "/" + ns + "/" + res, goJsonRestHelloHandler})
+			routes = append(routes, &rest.Route{"POST", "/" + ns + "/" + res, goJsonRestHelloHandler})
+			routes = append(routes, &rest.Route{"GET", "/" + ns + "/" + res + "/:id", goJsonRestHelloHandler})
+			routes = append(routes, &rest.Route{"PUT", "/" + ns + "/" + res + "/:id", goJsonRestHelloHandler})
+			routes = append(routes, &rest.Route{"DELETE", "/" + ns + "/" + res + "/:id", goJsonRestHelloHandler})
+		}
+	}
+	handler.SetRoutes(routes...)
+
+	benchmarkRoutes(b, &handler, requests)
+}
+
+//
+// Benchmarks for go-json-rest/rest:
+//
+func goGojiRouterFor(namespaces []string, resources []string) http.Handler {
+	m := gojiweb.New()
+	for _, ns := range namespaces {
+		for _, res := range resources {
+			m.Get("/"+ns+"/"+res, gojiHelloHandler)
+			m.Post("/"+ns+"/"+res, gojiHelloHandler)
+			m.Get("/"+ns+"/"+res+"/:id", gojiHelloHandler)
+			m.Put("/"+ns+"/"+res+"/:id", gojiHelloHandler)
+			m.Delete("/"+ns+"/"+res+"/:id", gojiHelloHandler)
+		}
+	}
+	return m
+}
+
+func BenchmarkGoji_Simple(b *testing.B) {
+	m := gojiweb.New()
+	m.Get("/action", gojiHelloHandler)
+
+	rw, req := testRequest("GET", "/action")
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		m.ServeHTTP(rw, req)
+		if rw.Code != 200 {
+			panic("goji: no good")
+		}
+	}
+}
+
+func BenchmarkGoji_Route15(b *testing.B) {
+	benchmarkRoutesN(b, 1, goGojiRouterFor)
+}
+
+func BenchmarkGoji_Route75(b *testing.B) {
+	benchmarkRoutesN(b, 5, goGojiRouterFor)
+}
+
+func BenchmarkGoji_Route150(b *testing.B) {
+	benchmarkRoutesN(b, 10, goGojiRouterFor)
+}
+
+func BenchmarkGoji_Route300(b *testing.B) {
+	benchmarkRoutesN(b, 20, goGojiRouterFor)
+}
+
+func BenchmarkGoji_Route3000(b *testing.B) {
+	benchmarkRoutesN(b, 200, goGojiRouterFor)
+}
+
+func BenchmarkGoji_Middleware(b *testing.B) {
+	middleware := func(h http.Handler) http.Handler {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			h.ServeHTTP(w, r)
+		}
+		return http.HandlerFunc(handler)
+	}
+
+	m := gojiweb.New()
+	m.Get("/action", gojiHelloHandler)
+	m.Use(middleware)
+	m.Use(middleware)
+	m.Use(middleware)
+	m.Use(middleware)
+	m.Use(middleware)
+	m.Use(middleware)
+
+	rw, req := testRequest("GET", "/action")
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		m.ServeHTTP(rw, req)
+		if rw.Code != 200 {
+			panic("goji: no good")
+		}
+	}
+}
+
+func BenchmarkGoji_Composite(b *testing.B) {
+	namespaces, resources, requests := resourceSetup(10)
+
+	compositeMiddleware := func(c *gojiweb.C, h http.Handler) http.Handler {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			c.Env["field"] = r.URL.Path
+			h.ServeHTTP(w, r)
+		}
+		return http.HandlerFunc(handler)
+	}
+	middleware := func(h http.Handler) http.Handler {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			h.ServeHTTP(w, r)
+		}
+		return http.HandlerFunc(handler)
+	}
+
+	m := gojiweb.New()
+	m.Use(compositeMiddleware)
+	m.Use(middleware)
+	m.Use(middleware)
+	m.Use(middleware)
+	m.Use(middleware)
+	m.Use(middleware)
+	m.Use(middleware)
+
+	for _, ns := range namespaces {
+		for _, res := range resources {
+			m.Get("/"+ns+"/"+res, gojiHelloHandler)
+			m.Post("/"+ns+"/"+res, gojiHelloHandler)
+			m.Get("/"+ns+"/"+res+"/:id", gojiHelloHandler)
+			m.Put("/"+ns+"/"+res+"/:id", gojiHelloHandler)
+			m.Delete("/"+ns+"/"+res+"/:id", gojiHelloHandler)
+		}
+	}
+
+	benchmarkRoutesGoji(b, m, requests)
+}
+
+//
 // Helpers:
 //
 func helloHandler(rw http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(rw, "hello")
+}
+
+func goJsonRestHelloHandler(rw rest.ResponseWriter, req *rest.Request) {
+	fmt.Fprintf(rw.(http.ResponseWriter), "hello")
+}
+
+func gojiHelloHandler(c gojiweb.C, w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "Hello")
 }
 
 func testRequest(method, path string) (*httptest.ResponseRecorder, *http.Request) {
@@ -549,6 +828,25 @@ func benchmarkRoutes(b *testing.B, handler http.Handler, requests []*http.Reques
 
 		if recorder.Code != 200 {
 			panic("wat")
+		}
+
+		reqId += 1
+	}
+}
+
+func benchmarkRoutesGoji(b *testing.B, handler gojiweb.Handler, requests []*http.Request) {
+	recorder := httptest.NewRecorder()
+	reqId := 0
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if reqId >= len(requests) {
+			reqId = 0
+		}
+		req := requests[reqId]
+		handler.ServeHTTPC(gojiweb.C{Env: map[string]interface{}{}}, recorder, req)
+
+		if recorder.Code != 200 {
+			panic("goji error")
 		}
 
 		reqId += 1
