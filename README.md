@@ -87,6 +87,7 @@ BenchmarkGocraftWeb_Route300            1000000       2349 ns/op
 BenchmarkGocraftWeb_Route3000           1000000       2624 ns/op
 BenchmarkGocraftWeb_Middleware          1000000       1691 ns/op
 BenchmarkGocraftWeb_Composite            500000       3708 ns/op
+
 BenchmarkGorillaMux_Simple               500000       3224 ns/op
 BenchmarkGorillaMux_Route15              200000      14812 ns/op
 BenchmarkGorillaMux_Route75              100000      22686 ns/op
