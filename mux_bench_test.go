@@ -3,15 +3,17 @@ package mux_bench_test
 import (
 	"crypto/sha1"
 	"fmt"
-	"github.com/codegangsta/martini"
-	"github.com/gocraft/web"
-	"github.com/gorilla/mux"
-	"github.com/pilu/traffic"
-	"github.com/rcrowley/go-tigertonic"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/codegangsta/martini"
+	"github.com/dimfeld/httptreemux"
+	"github.com/gocraft/web"
+	"github.com/gorilla/mux"
+	"github.com/pilu/traffic"
+	tigertonic "github.com/rcrowley/go-tigertonic"
 )
 
 //
@@ -157,9 +159,9 @@ func gorillaMuxRouterFor(namespaces []string, resources []string) http.Handler {
 		for _, res := range resources {
 			subrouter.HandleFunc("/"+res, helloHandler).Methods("GET")
 			subrouter.HandleFunc("/"+res, helloHandler).Methods("POST")
-			subrouter.HandleFunc("/"+res+"/:id", helloHandler).Methods("GET")
-			subrouter.HandleFunc("/"+res+"/:id", helloHandler).Methods("PUT")
-			subrouter.HandleFunc("/"+res+"/:id", helloHandler).Methods("DELETE")
+			subrouter.HandleFunc("/"+res+"/{id}", helloHandler).Methods("GET")
+			subrouter.HandleFunc("/"+res+"/{id}", helloHandler).Methods("PUT")
+			subrouter.HandleFunc("/"+res+"/{id}", helloHandler).Methods("DELETE")
 		}
 	}
 	return router
@@ -484,6 +486,60 @@ func BenchmarkPiluTraffic_Composite(b *testing.B) {
 		}
 	}
 	benchmarkRoutes(b, router, requests)
+}
+
+//
+// Benchmarks for dimfeld/httptreemux:
+//
+func httpTreeMuxHandle(rw http.ResponseWriter, _ *http.Request) {
+	fmt.Fprintf(rw, "hello")
+}
+
+func httpTreeMuxRouterFor(namespaces []string, resources []string) http.Handler {
+	router := httptreemux.NewContextMux()
+
+	for _, ns := range namespaces {
+		for _, res := range resources {
+			router.GET("/"+ns+"/"+res, httpTreeMuxHandle)
+			router.POST("/"+ns+"/"+res, httpTreeMuxHandle)
+			router.GET("/"+ns+"/"+res+"/:id", httpTreeMuxHandle)
+			router.PUT("/"+ns+"/"+res+"/:id", httpTreeMuxHandle)
+			router.DELETE("/"+ns+"/"+res+"/:id", httpTreeMuxHandle)
+		}
+	}
+	return router
+}
+
+func BenchmarkHttpTreeMux_Simple(b *testing.B) {
+	router := httptreemux.NewContextMux()
+	router.GET("/action", httpTreeMuxHandle)
+
+	rw, req := testRequest("GET", "/action")
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		router.ServeHTTP(rw, req)
+	}
+}
+
+func BenchmarkHttpTreeMux_Route15(b *testing.B) {
+	benchmarkRoutesN(b, 1, httpTreeMuxRouterFor)
+}
+
+func BenchmarkHttpTreeMux_Route75(b *testing.B) {
+	benchmarkRoutesN(b, 5, httpTreeMuxRouterFor)
+}
+
+func BenchmarkHttpTreeMux_Route150(b *testing.B) {
+	benchmarkRoutesN(b, 10, httpTreeMuxRouterFor)
+}
+
+func BenchmarkHttpTreeMux_Route300(b *testing.B) {
+	benchmarkRoutesN(b, 20, httpTreeMuxRouterFor)
+}
+
+func BenchmarkHttpTreeMux_Route3000(b *testing.B) {
+	benchmarkRoutesN(b, 200, httpTreeMuxRouterFor)
 }
 
 //
